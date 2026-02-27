@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: dim_customer
+    columns:
+      - name: customer_sk
+        tests:
+          - not_null
+          - unique
+
+  - name: fact_sales
+    columns:
+      - name: customer_sk
+        tests:
+          - relationships:
+              to: ref('dim_customer')
+              field: customer_sk
