@@ -1,0 +1,52 @@
+name: dbt CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  dbt-build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: enterprise_dbt_project
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dbt
+        run: pip install dbt-snowflake
+
+      - name: Create profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          echo "
+          enterprise_dbt_project:
+            target: ci
+            outputs:
+              ci:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: ${{ secrets.SNOWFLAKE_ROLE }}
+                warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+                database: ${{ github.ref == 'refs/heads/main' && 'ENTERPRISE_DW_PROD' || 'ENTERPRISE_DW_DEV' }}
+                schema: analytics
+                threads: 4
+          " > ~/.dbt/profiles.yml
+
+      - name: Run dbt debug
+        run: dbt debug
+
+      - name: Run dbt build
+        run: dbt build
